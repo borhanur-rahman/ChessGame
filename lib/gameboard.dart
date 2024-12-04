@@ -3,6 +3,8 @@ import 'package:chess_game/components/piece.dart';
 import 'package:chess_game/components/square.dart';
 import 'package:chess_game/helper/helper_methods.dart';
 import 'package:flutter/material.dart';
+import 'package:chess_game/database_service.dart';
+
 
 
 class Gameboard extends StatefulWidget {
@@ -48,9 +50,34 @@ class _GameboardState extends State<Gameboard> {
   bool whiteLeftRook = false;
   bool blackRightRook = false;
   bool blackLeftRook = false;
-  
 
- 
+
+  List<Map<String, List<int>>> moveHistory = [];
+
+  final databaseService = DatabaseService();
+  
+  void saveGame(String name) async {
+  if (name.isEmpty) {
+    print('Game name cannot be empty!');
+    return;
+  }
+  if (moveHistory == null || moveHistory.isEmpty) {
+    print('Move history is invalid!');
+    return;
+  }
+
+  try {
+    await databaseService.saveGame(name, moveHistory);
+    print('Game saved successfully!');
+  } catch (e) {
+    print('Error saving game: $e');
+  }
+}
+
+
+
+
+
 
 
 
@@ -58,6 +85,7 @@ class _GameboardState extends State<Gameboard> {
   void initState(){
     super.initState();
     _initializeBoard();
+   
   }
 
   //INITIALiZE BOARD
@@ -683,10 +711,18 @@ class _GameboardState extends State<Gameboard> {
       if(besideKing<0){
         board[0][5]=board[0][7];
         board[0][7]=null;
+        moveHistory.add({
+            "from": [0, 7],
+            "to": [0, 5],
+          });
       }
       else{
         board[0][3]=board[0][0];
         board[0][0]=null;
+        moveHistory.add({
+            "from": [0, 0],
+            "to": [0, 3],
+          });
       }
       
 
@@ -696,10 +732,18 @@ class _GameboardState extends State<Gameboard> {
       if(besideKing<0){
         board[7][5]=board[7][7];
         board[7][7]=null;
+        moveHistory.add({
+            "from": [7, 7],
+            "to": [7, 5],
+          });
       }
       else{
         board[7][3]=board[7][0];
         board[7][0]=null;
+        moveHistory.add({
+            "from": [7, 0],
+            "to": [7, 3],
+          });
       }
       
 
@@ -743,6 +787,11 @@ class _GameboardState extends State<Gameboard> {
     //move the piece and clear the old position
     board[newRow][newCol]= selectedPiece;
     board[selectedRow][selectedCol]=null;
+    moveHistory.add({
+        "from": [selectedRow, selectedCol],
+        "to": [newRow, newCol],
+      });
+
 
 
     //promotion of pawn at 8'th rank
@@ -769,16 +818,158 @@ class _GameboardState extends State<Gameboard> {
       validMoves = [];
     });
     //check if it's check mate
-    if(isCheckMate(!isWhiteTurn)){
-      showDialog(context: context,
-       builder: (context)=>AlertDialog(
-        title: const Text("CHECK MATE"),
-        actions: [
-          //play again button
-          TextButton(onPressed: resetGame, child: const Text('Play agian')),
-        ],
-       ));
-    }
+    if (isCheckMate(!isWhiteTurn)) {
+ if (context.mounted) {
+  String gameName = ''; // To store the game name entered by the user
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20), // Rounded corners
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Color(0xFF2B2D42), // Dark background color
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Title
+              const Text(
+                "CHECK MATE",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white, // Light text on dark background
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Subtitle
+              const Text(
+                "Would you like to save the game?",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white70, // Lighter text for contrast
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              // TextField
+              TextField(
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
+                  labelText: 'Game Name',
+                  hintText: 'Enter a name for this game',
+                  labelStyle: const TextStyle(color: Colors.black54),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 16,
+                  ),
+                ),
+                onChanged: (value) {
+                  gameName = value; // Update the game name
+                },
+              ),
+              const SizedBox(height: 20),
+              // Buttons with 3D effect
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Save Button
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (gameName.isNotEmpty) {
+                          saveGame(gameName);
+                          Navigator.of(context).pop();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter a game name!')),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(255, 29, 5, 186), // Blue
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        shadowColor: Colors.blueAccent,
+                        elevation: 10, // 3D effect
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(fontSize: 14, color: Color.fromARGB(255, 244, 240, 240)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Play Again Button
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        resetGame();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(255, 23, 123, 48), // Yellow
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        shadowColor: const Color.fromARGB(255, 158, 222, 168),
+                        elevation: 10, // 3D effect
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text(
+                        'Play Again',
+                        style: TextStyle(fontSize: 14, color: Color.fromARGB(255, 250, 247, 247)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Cancel Button
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(255, 201, 24, 24), // Red
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        shadowColor: const Color.fromARGB(255, 154, 111, 111),
+                        elevation: 10, // 3D effect
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontSize: 14, color: Color.fromARGB(255, 247, 244, 244)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+
+}
+
 
     //change turn
     isWhiteTurn = !isWhiteTurn;
@@ -1010,53 +1201,62 @@ void promotePawn(int row,int col,String selectedPiece,bool isWhite){
      }
  }
  
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(),
-     
-      body: Column(
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(),
+    body: Container(
+      color: const Color.fromARGB(255, 39, 40, 52), // Dark background color outside the board
+      child: Column(
         children: [
           Expanded(child: Container()),
-          Text(checkStatus? "check":""),
-          //white pieces taken
+          Text(
+            checkStatus ? "check!" : "",
+            style: const TextStyle(
+              color: Colors.white, // Ensures the text color is white
+              fontSize: 24, // Adjust the font size if necessary
+              fontWeight: FontWeight.bold, // Optional: make it bold
+            ),
+          ),
+          // White pieces taken
           Expanded(
-            flex: 6,
+            flex: 7,
             child: GridView.builder(
-              itemCount:8*8,
+              itemCount: 8 * 8,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate:
-               const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8), 
-               itemBuilder: (context,index){
-                int row = index~/8;
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 8,
+              ),
+              itemBuilder: (context, index) {
+                int row = index ~/ 8;
                 int col = index % 8;
-            
-                //check if this square is selected
+
+                // Check if this square is selected
                 bool isSelected = selectedRow == row && selectedCol == col;
-            
-                //check if this square is a valid move
-                bool isValidMove =false;
-                for(var position in validMoves){
-                  if(position[0]== row && position[1]==col){
+
+                // Check if this square is a valid move
+                bool isValidMove = false;
+                for (var position in validMoves) {
+                  if (position[0] == row && position[1] == col) {
                     isValidMove = true;
                   }
                 }
-               
-               return Square(
-                isWhite: isWhite(index),
-                piece:board[row][col] ,
-                isSelected: isSelected,
-                isValidMove: isValidMove,
-                onTap:()=> pieceSelected(row,col),
+
+                return Square(
+                  isWhite: isWhite(index),
+                  piece: board[row][col],
+                  isSelected: isSelected,
+                  isValidMove: isValidMove,
+                  onTap: () => pieceSelected(row, col),
                 );
-                
-               }
-               ),
+              },
+            ),
           ),
-             //black pieces taken
-               Expanded(child: Container()),
+          // Black pieces taken
+          Expanded(child: Container()),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

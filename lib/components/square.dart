@@ -35,7 +35,7 @@ class Square extends StatelessWidget {
 
     //otherwise ,it's white or black
     else{
-      squareColor = isWhite? const Color.fromARGB(255, 235, 233, 233):const Color.fromARGB(199, 5, 68, 45);
+      squareColor = isWhite? const Color.fromARGB(255, 235, 233, 233):const Color.fromARGB(198, 14, 116, 79);
     }
 
     return GestureDetector(
